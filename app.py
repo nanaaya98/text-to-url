@@ -47,24 +47,20 @@ def process_images(images_data):
     image_paths = []
     for i, img_data in enumerate(images_data):
         try:
-            # 移除可能存在的前缀
-            if img_data.startswith('data:image/'):
-                img_data = img_data.split(',', 1)[1]
-            
             # 解码base64数据
             img_bytes = base64.b64decode(img_data)
-            
+
             # 生成唯一文件名
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
             hash_str = hashlib.sha256((img_data + timestamp).encode()).hexdigest()[:10]
             file_ext = get_image_extension(img_bytes)
             filename = f'{hash_str}.{file_ext}'
             file_path = os.path.join(IMAGES_DIR, filename)
-            
+
             # 保存图片
             with open(file_path, 'wb') as f:
                 f.write(img_bytes)
-            
+
             image_paths.append(filename)
         except Exception as e:
             print(f"Error processing image {i}: {str(e)}")
@@ -83,32 +79,32 @@ def insert_images_into_text(content, image_paths):
     """将图片随机插入到文本中的空行位置"""
     if not image_paths:
         return content
-    
+
     # 按空行分割文本
     blocks = content.split('\n\n')
-    
+
     # 计算可插入图片的位置（至少有一个其他块）
     if len(blocks) <= 1:
         # 如果没有空行，直接在末尾添加所有图片
         image_md = '\n\n'.join([f'![Image](images/{img_path})' for img_path in image_paths])
         return content + '\n\n' + image_md
-    
+
     # 随机选择位置插入图片
     positions = sorted(random.sample(range(len(blocks)), min(len(blocks)-1, len(image_paths))))
     images_used = 0
-    
+
     new_blocks = []
     for i, block in enumerate(blocks):
         new_blocks.append(block)
         if i in positions and images_used < len(image_paths):
             new_blocks.append(f'![Image](images/{image_paths[images_used]})')
             images_used += 1
-    
+
     # 添加剩余的图片到末尾
     if images_used < len(image_paths):
         for img_path in image_paths[images_used:]:
             new_blocks.append(f'![Image](images/{img_path})')
-    
+
     return '\n\n'.join(new_blocks)
 
 @app.route('/')
@@ -134,13 +130,13 @@ def index():
         <form method="POST" action="/convert">
             <label for="title">Title (optional):</label>
             <input type="text" id="title" name="title" placeholder="Enter title here..."><br><br>
-            
+
             <label for="text">Content:</label><br>
             <textarea name="text" placeholder="Enter your text or markdown here..."></textarea><br>
-            
+
             <label for="images">Images (base64, multiple allowed, comma-separated):</label><br>
             <textarea id="images" name="images" placeholder="Paste base64 image data here..."></textarea><br>
-            
+
             <button type="submit">Convert</button>
         </form>
     </body>
@@ -161,34 +157,34 @@ def convert():
         content = request.form.get('text', '')
         images = request.form.get('images', '').split('\n')
         images = [img.strip() for img in images if img.strip()]
-    
+
     if not content:
         return jsonify({'error': 'Content is required'}), 400
-    
+
     # 处理图片
     image_paths = process_images(images)
-    
+
     # 插入图片到文本中
     final_content = insert_images_into_text(content, image_paths)
-    
+
     # 如果有标题，添加标题
     if title:
         final_content = f'# {title}\n\n{final_content}'
-    
+
     # 添加尾注
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     final_content += f'\n\n---\n\n喵子柒 &emsp;&emsp;&emsp;&emsp;{timestamp}'
-    
+
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     hash_str = hashlib.sha256((content + timestamp).encode()).hexdigest()[:10]
     filename = f'{DATA_DIR}/{hash_str}.txt'
-    
+
     try:
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(final_content)
     except Exception as e:
         return jsonify({'error': f'Failed to save content: {str(e)}'}), 500
-    
+
     return jsonify({
         'url': f'{request.host_url}view/{hash_str}',
         'hash_id': hash_str,
@@ -199,16 +195,16 @@ def convert():
 def view(hash_id):
     """查看生成的内容页面"""
     filename = f'{DATA_DIR}/{hash_id}.txt'
-    
+
     if not os.path.exists(filename):
         return jsonify({'error': 'Content not found'}), 404
-    
+
     try:
         with open(filename, 'r', encoding='utf-8') as f:
             content = f.read()
     except Exception as e:
         return jsonify({'error': f'Failed to read content: {str(e)}'}), 500
-    
+
     try:
         # 尝试将内容解析为Markdown
         html_content = markdown.markdown(content, extensions=['fenced_code', 'tables'])
@@ -271,10 +267,10 @@ def status():
 if __name__ == '__main__':
     # 记录应用启动时间
     app.start_time = time.time()
-    
+
     # 启动清理线程
     cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
     cleanup_thread.start()
-    
+
     # 启动Flask应用
-    app.run(host='0.0.0.0', port=5000)    
+    app.run(host='0.0.0.0', port=5000)
