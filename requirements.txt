@@ -1,0 +1,3 @@
+Flask==2.3.2
+Markdown==3.4.4
+Pillow==10.0.0  # 添加Pillow库以确保图片处理功能正常    

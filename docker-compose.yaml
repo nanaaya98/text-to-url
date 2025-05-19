@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./images:/app/images  # 挂载图片目录
+    environment:
+      - BASE_URL=http://localhost:5000  # 可以修改为实际域名或IP
+      - CLEANUP_INTERVAL=86400  # 清理间隔（秒）
+    restart: always    
